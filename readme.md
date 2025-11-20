@@ -7,7 +7,7 @@
 ## 🚀 Live Demo
 
 - **Frontend:** [https://talentconnect-henna.vercel.app/](https://talentconnect-henna.vercel.app/)
-- **Backend API:** [https://talentconnect-l79w.onrender.com/](https://talentconnect-l79w.onrender.com/)
+- **Backend:** [https://talentconnect-l79w.onrender.com/](https://talentconnect-l79w.onrender.com/)
 
 ---
 
