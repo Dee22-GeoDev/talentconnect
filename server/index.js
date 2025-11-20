@@ -11,19 +11,19 @@ const trainingRoutes = require("./routes/trainingRoutes");
 dotenv.config();
 const app = express();
 
-// // CORS FIX for Vite client (PORT 5173)
-// app.use(
-//   cors({
-//     origin: "http://localhost:5173",
-//     credentials: true,
-//   })
-// );
+// CORS FIX for Vite client (PORT 5173)
 app.use(
   cors({
-    origin: true,       // Accept requests from any origin
-    credentials: true,  // Allow cookies/authorization headers
+    origin: "https://talentconnect-henna.vercel.app",
+    credentials: true,
   })
 );
+// app.use(
+//   cors({
+//     origin: true,       // Accept requests from any origin
+//     credentials: true,  // Allow cookies/authorization headers
+//   })
+// );
 app.use(express.json());
 
 // ROUTES
