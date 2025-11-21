@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
   proxy: {
     "/api": {
-      target: "https://talentconnect-l79w.onrender.com",
+      target: "https://talentconnect-ai6v.onrender.com",
       changeOrigin: true,
     },
   },

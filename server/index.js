@@ -14,7 +14,7 @@ const app = express();
 // CORS FIX for Vite client (PORT 5173)
 app.use(
   cors({
-    origin: "https://talentconnect-henna.vercel.app",
+    origin: "https://talentconnect-seven.vercel.app",
     credentials: true,
   })
 );
