@@ -20,7 +20,7 @@ export interface Talent {
 }
 
 // Base API URL
-const API_BASE = 'http://localhost:4000/api'; // full backend URL
+const API_BASE = 'https://talentconnect-deployment.onrender.com'; // full backend URL
 
 // ------------------ FETCH ALL TALENTS ------------------
 export const useTalents = () => {

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 // Axios defaults
-axios.defaults.baseURL = "http://localhost:4000";
+axios.defaults.baseURL = "https://talentconnect-deployment.onrender.com";
 axios.defaults.withCredentials = true;
 
 export interface Job {
