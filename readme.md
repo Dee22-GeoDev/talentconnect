@@ -6,8 +6,8 @@
 
 ## 🚀 Live Demo
 
-- **Frontend:** [https://talentconnect-henna.vercel.app/](https://talentconnect-henna.vercel.app/)
-- **Backend:** [https://talentconnect-deployment.onrender.com/](https://talentconnect-l79w.onrender.com/)
+- **Frontend:** [https://talentconnect-henna.vercel.app/]
+- **Backend:** [https://talentconnect-deployment.onrender.com/]
 
 ---
 
