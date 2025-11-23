@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, MapPin, Briefcase } from "lucide-react";
+import { Search, Briefcase } from "lucide-react";
 import { useTalents } from "@/hooks/useTalents";
 
 const Talents = () => {
@@ -16,17 +16,20 @@ const Talents = () => {
   const { data: talents = [], isLoading } = useTalents();
 
   const filteredTalents = talents.filter((talent) => {
+    // Safe search matching with null checks
     const matchesSearch = 
-      talent.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      talent.skills.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (talent.bio && talent.bio.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (talent.profiles?.full_name && talent.profiles.full_name.toLowerCase().includes(searchQuery.toLowerCase()));
+      (talent.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (talent.skills || []).some(skill => 
+        (skill?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+      ) ||
+      (talent.bio?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (talent.profiles?.full_name?.toLowerCase() || "").includes(searchQuery.toLowerCase());
     
     const matchesExperience = 
       experienceLevel === "all" ||
-      (experienceLevel === "junior" && talent.experience_years && talent.experience_years <= 2) ||
-      (experienceLevel === "mid" && talent.experience_years && talent.experience_years >= 3 && talent.experience_years <= 5) ||
-      (experienceLevel === "senior" && talent.experience_years && talent.experience_years >= 6);
+      (experienceLevel === "junior" && talent.experience_years !== null && talent.experience_years <= 2) ||
+      (experienceLevel === "mid" && talent.experience_years !== null && talent.experience_years >= 3 && talent.experience_years <= 5) ||
+      (experienceLevel === "senior" && talent.experience_years !== null && talent.experience_years >= 6);
     
     return matchesSearch && matchesExperience;
   });
@@ -125,13 +128,13 @@ const Talents = () => {
                     <div className="flex-1">
                       <CardTitle className="mb-1">{talent.profiles?.full_name || 'Anonymous'}</CardTitle>
                       <CardDescription className="mb-2 text-base font-medium text-foreground">
-                        {talent.title}
+                        {talent.title || 'No title'}
                       </CardDescription>
                       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                        {talent.experience_years && (
+                        {talent.experience_years !== null && talent.experience_years !== undefined && (
                           <div className="flex items-center gap-1">
                             <Briefcase className="h-4 w-4" />
-                            {talent.experience_years} years
+                            {talent.experience_years} {talent.experience_years === 1 ? 'year' : 'years'}
                           </div>
                         )}
                       </div>
@@ -141,10 +144,10 @@ const Talents = () => {
                 </CardHeader>
                 <CardContent>
                   {talent.bio && (
-                    <p className="mb-4 text-sm text-muted-foreground">{talent.bio}</p>
+                    <p className="mb-4 text-sm text-muted-foreground line-clamp-3">{talent.bio}</p>
                   )}
                   <div className="mb-4 flex flex-wrap gap-2">
-                    {talent.skills.map((skill) => (
+                    {(talent.skills || []).map((skill) => (
                       <Badge key={skill} variant="secondary">
                         {skill}
                       </Badge>
