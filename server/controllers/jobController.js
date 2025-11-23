@@ -27,3 +27,25 @@ exports.remove = async (req, res) => {
   await Job.findByIdAndDelete(req.params.id);
   res.json({ message: 'Deleted' });
 };
+
+exports.create = async (req, res) => {
+  try {
+    const { title, description, company, location, type, salary_range } = req.body;
+    
+    const job = new Job({ 
+      title, 
+      description, 
+      company, 
+      location,
+      type,
+      salary_range,
+      createdBy: req.user._id 
+    });
+    
+    await job.save();
+    res.json({ job }); // Wrap in object to match frontend expectation
+  } catch (error) {
+    console.error('Error creating job:', error);
+    res.status(500).json({ message: 'Failed to create job' });
+  }
+};

@@ -27,3 +27,25 @@ exports.remove = async (req, res) => {
   await Talent.findByIdAndDelete(req.params.id);
   res.json({ message: 'Deleted' });
 };
+
+exports.create = async (req, res) => {
+  try {
+    const { title, bio, skills, experience_years, portfolio_url, resume_url } = req.body;
+    
+    const talent = new Talent({ 
+      title,
+      bio,
+      skills,
+      experience_years,
+      portfolio_url,
+      resume_url,
+      createdBy: req.user._id 
+    });
+    
+    await talent.save();
+    res.json(talent);
+  } catch (error) {
+    console.error('Error creating talent profile:', error);
+    res.status(500).json({ message: 'Failed to create profile' });
+  }
+};
