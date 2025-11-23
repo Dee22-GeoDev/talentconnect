@@ -33,18 +33,39 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ------------------ AXIOS SETUP ------------------
-// Dynamically set baseURL based on environment
-axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+// Create axios instance with baseURL
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:4000",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
+});
 
 // Attach token to all requests
-axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
+
+// Handle response errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ------------------ PROVIDER ------------------
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -61,9 +82,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
-        const res = await axios.get("/api/auth/me");
+        const res = await api.get("/api/auth/me");
         setUser(res.data.user);
-      } catch {
+      } catch (error) {
+        console.error("Failed to load user:", error);
         localStorage.removeItem("token");
         setUser(null);
       } finally {
@@ -77,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ------------------ SIGN IN ------------------
   const signIn = async (email: string, password: string) => {
     try {
-      const res = await axios.post("/api/auth/login", { email, password });
+      const res = await api.post("/api/auth/login", { email, password });
       const { user, token } = res.data;
 
       localStorage.setItem("token", token);
@@ -85,7 +107,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       toast.success("Welcome back!");
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Login failed");
+      const errorMsg = err.response?.data?.message || "Login failed";
+      console.error("Login error:", err);
+      toast.error(errorMsg);
+      throw new Error(errorMsg);
     }
   };
 
@@ -97,7 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     role: "talent" | "recruiter"
   ) => {
     try {
-      const res = await axios.post("/api/auth/register", {
+      const res = await api.post("/api/auth/register", {
         email,
         password,
         fullName,
@@ -110,15 +135,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       toast.success("Account created!");
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Registration failed");
+      const errorMsg = err.response?.data?.message || "Registration failed";
+      console.error("Signup error:", err);
+      toast.error(errorMsg);
+      throw new Error(errorMsg);
     }
   };
 
   // ------------------ SIGN OUT ------------------
   const signOut = async () => {
     try {
-      await axios.post("/api/auth/logout");
-    } catch {}
+      await api.post("/api/auth/logout");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
     localStorage.removeItem("token");
     setUser(null);
     toast.success("Logged out");
