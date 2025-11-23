@@ -8,6 +8,7 @@ import {
 import axios from "axios";
 import { toast } from "sonner";
 
+// ------------------ TYPES ------------------
 interface User {
   id: string;
   email: string;
@@ -28,20 +29,24 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+// ------------------ CONTEXT ------------------
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Axios defaults
-axios.defaults.baseURL = "http://localhost:4000";
+// ------------------ AXIOS SETUP ------------------
+// Dynamically set baseURL based on environment
+axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 
-// Load token when axios runs
+// Attach token to all requests
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
+// ------------------ PROVIDER ------------------
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,9 +66,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch {
         localStorage.removeItem("token");
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     loadUser();
@@ -73,7 +78,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       const res = await axios.post("/api/auth/login", { email, password });
-
       const { user, token } = res.data;
 
       localStorage.setItem("token", token);
@@ -99,7 +103,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         fullName,
         role,
       });
-
       const { user, token } = res.data;
 
       localStorage.setItem("token", token);
@@ -116,21 +119,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await axios.post("/api/auth/logout");
     } catch {}
-
     localStorage.removeItem("token");
     setUser(null);
     toast.success("Logged out");
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, signIn, signUp, signOut }}
-    >
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
+// ------------------ CUSTOM HOOK ------------------
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
