@@ -1,10 +1,44 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-// Axios defaults
-axios.defaults.baseURL = "https://talentconnect-deployment.onrender.com";
-axios.defaults.withCredentials = true;
+// Base API URL
+const API_BASE = import.meta.env.VITE_API_URL || 'https://talentconnect-deployment.onrender.com';
+
+// Create axios instance with auth token
+const api = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+});
+
+// Attach token to all requests
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Handle response errors
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export interface Job {
   id: string;
@@ -23,12 +57,13 @@ export interface Job {
    GET ALL JOBS
 ---------------------------- */
 export const useJobs = () => {
-  return useQuery({
+  return useQuery<Job[], Error>({
     queryKey: ["jobs"],
     queryFn: async () => {
-      const res = await axios.get("/api/jobs");
-      return res.data.jobs as Job[];
+      const res = await api.get("/api/jobs");
+      return res.data.jobs;
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
@@ -36,12 +71,13 @@ export const useJobs = () => {
    GET JOBS CREATED BY LOGGED IN USER
 ---------------------------- */
 export const useMyJobs = () => {
-  return useQuery({
+  return useQuery<Job[], Error>({
     queryKey: ["my-jobs"],
     queryFn: async () => {
-      const res = await axios.get("/api/jobs/my");
-      return res.data.jobs as Job[];
+      const res = await api.get("/api/jobs/my");
+      return res.data.jobs;
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
 
@@ -51,11 +87,13 @@ export const useMyJobs = () => {
 export const useCreateJob = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (
-      job: Omit<Job, "id" | "created_at" | "updated_at">
-    ) => {
-      const res = await axios.post("/api/jobs", job);
+  return useMutation<
+    Job,
+    AxiosError<{ message: string }>,
+    Omit<Job, "id" | "created_at" | "updated_at">
+  >({
+    mutationFn: async (job) => {
+      const res = await api.post("/api/jobs", job);
       return res.data.job;
     },
     onSuccess: () => {
@@ -63,8 +101,10 @@ export const useCreateJob = () => {
       queryClient.invalidateQueries({ queryKey: ["my-jobs"] });
       toast.success("Job posted successfully!");
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to create job");
+    onError: (error) => {
+      const errorMsg = error?.response?.data?.message || "Failed to create job";
+      console.error("Create job error:", error);
+      toast.error(errorMsg);
     },
   });
 };
@@ -75,9 +115,13 @@ export const useCreateJob = () => {
 export const useUpdateJob = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Job> & { id: string }) => {
-      const res = await axios.put(`/api/jobs/${id}`, updates);
+  return useMutation<
+    Job,
+    AxiosError<{ message: string }>,
+    Partial<Job> & { id: string }
+  >({
+    mutationFn: async ({ id, ...updates }) => {
+      const res = await api.put(`/api/jobs/${id}`, updates);
       return res.data.job;
     },
     onSuccess: () => {
@@ -85,8 +129,10 @@ export const useUpdateJob = () => {
       queryClient.invalidateQueries({ queryKey: ["my-jobs"] });
       toast.success("Job updated successfully!");
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to update job");
+    onError: (error) => {
+      const errorMsg = error?.response?.data?.message || "Failed to update job";
+      console.error("Update job error:", error);
+      toast.error(errorMsg);
     },
   });
 };
@@ -97,17 +143,19 @@ export const useUpdateJob = () => {
 export const useDeleteJob = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (id: string) => {
-      await axios.delete(`/api/jobs/${id}`);
+  return useMutation<void, AxiosError<{ message: string }>, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/api/jobs/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       queryClient.invalidateQueries({ queryKey: ["my-jobs"] });
       toast.success("Job deleted successfully!");
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to delete job");
+    onError: (error) => {
+      const errorMsg = error?.response?.data?.message || "Failed to delete job";
+      console.error("Delete job error:", error);
+      toast.error(errorMsg);
     },
   });
 };

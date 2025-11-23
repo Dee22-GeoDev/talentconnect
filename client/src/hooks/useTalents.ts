@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -20,7 +20,7 @@ export interface Talent {
 }
 
 // Base API URL
-const API_BASE = 'https://talentconnect-deployment.onrender.com';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://talentconnect-deployment.onrender.com';
 
 // Create axios instance with auth token
 const api = axios.create({
@@ -28,38 +28,58 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // Attach token to all requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
+
+// Handle response errors
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ------------------ FETCH ALL TALENTS ------------------
 export const useTalents = () => {
-  return useQuery({
+  return useQuery<Talent[], Error>({
     queryKey: ['talents'],
     queryFn: async () => {
       const res = await api.get('/api/talents');
-      return res.data as Talent[];
+      return res.data;
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
 // ------------------ FETCH MY TALENT PROFILE ------------------
 export const useMyTalentProfile = (userId: string | undefined) => {
-  return useQuery({
+  return useQuery<Talent | null, Error>({
     queryKey: ['my-talent-profile', userId],
     queryFn: async () => {
       if (!userId) return null;
       const res = await api.get(`/api/talents/${userId}`);
-      return res.data as Talent | null;
+      return res.data;
     },
     enabled: !!userId,
+    retry: 1,
   });
 };
 
@@ -67,8 +87,12 @@ export const useMyTalentProfile = (userId: string | undefined) => {
 export const useCreateTalentProfile = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (talent: Omit<Talent, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
+  return useMutation<
+    Talent,
+    AxiosError<{ message: string }>,
+    Omit<Talent, 'id' | 'created_at' | 'updated_at' | 'profiles'>
+  >({
+    mutationFn: async (talent) => {
       const res = await api.post('/api/talents', talent);
       return res.data;
     },
@@ -77,8 +101,10 @@ export const useCreateTalentProfile = () => {
       queryClient.invalidateQueries({ queryKey: ['my-talent-profile'] });
       toast.success('Profile created successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create profile');
+    onError: (error) => {
+      const errorMsg = error.response?.data?.message || 'Failed to create profile';
+      console.error('Create profile error:', error);
+      toast.error(errorMsg);
     },
   });
 };
@@ -87,8 +113,12 @@ export const useCreateTalentProfile = () => {
 export const useUpdateTalentProfile = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Talent> & { id: string }) => {
+  return useMutation<
+    Talent,
+    AxiosError<{ message: string }>,
+    Partial<Talent> & { id: string }
+  >({
+    mutationFn: async ({ id, ...updates }) => {
       const res = await api.put(`/api/talents/${id}`, updates);
       return res.data;
     },
@@ -97,8 +127,31 @@ export const useUpdateTalentProfile = () => {
       queryClient.invalidateQueries({ queryKey: ['my-talent-profile'] });
       toast.success('Profile updated successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update profile');
+    onError: (error) => {
+      const errorMsg = error.response?.data?.message || 'Failed to update profile';
+      console.error('Update profile error:', error);
+      toast.error(errorMsg);
+    },
+  });
+};
+
+// ------------------ DELETE TALENT PROFILE ------------------
+export const useDeleteTalentProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, AxiosError<{ message: string }>, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/api/talents/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['talents'] });
+      queryClient.invalidateQueries({ queryKey: ['my-talent-profile'] });
+      toast.success('Profile deleted successfully!');
+    },
+    onError: (error) => {
+      const errorMsg = error.response?.data?.message || 'Failed to delete profile';
+      console.error('Delete profile error:', error);
+      toast.error(errorMsg);
     },
   });
 };
